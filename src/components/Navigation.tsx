@@ -4,10 +4,10 @@
  */
 
 import React from 'react';
-import { LayoutDashboard, FileText, CheckSquare, Users, Wallet, BarChart3, Menu, X, Sun, Moon } from 'lucide-react';
+import { LayoutDashboard, FileText, CheckSquare, Users, Wallet, BarChart3, Menu, X, Sun, Moon, StickyNote } from 'lucide-react';
 import { cn } from '../lib/utils';
 
-export type ViewType = 'dashboard' | 'invoices' | 'quotes' | 'clients' | 'expenses' | 'reports';
+export type ViewType = 'dashboard' | 'invoices' | 'quotes' | 'clients' | 'expenses' | 'reports' | 'notes';
 
 interface SidebarProps {
   currentView: ViewType;
@@ -22,6 +22,7 @@ const navItems = [
   { id: 'quotes', label: 'Orçamentos', icon: CheckSquare },
   { id: 'clients', label: 'Clientes', icon: Users },
   { id: 'expenses', label: 'Despesas', icon: Wallet },
+  { id: 'notes', label: 'Notas', icon: StickyNote },
   { id: 'reports', label: 'Relatórios', icon: BarChart3 },
 ];
 

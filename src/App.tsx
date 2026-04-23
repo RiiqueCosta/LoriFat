@@ -8,6 +8,7 @@ import { Sidebar, Navbar, ViewType } from './components/Navigation';
 import { DashboardView } from './components/DashboardView';
 import { RecordsView } from './components/RecordsView';
 import { ReportsView } from './components/ReportsView';
+import { NotesView } from './components/NotesView';
 import { RecordForm } from './components/RecordForm';
 import { Modal } from './components/Modal';
 import { useData } from './useData';
@@ -66,6 +67,13 @@ export default function App() {
               />
             )}
             {currentView === 'reports' && <ReportsView records={records} config={config} />}
+            {currentView === 'notes' && (
+              <NotesView 
+                records={records.filter(r => r.type === 'note') as any} 
+                onAdd={(note) => addRecord(note as any)}
+                onDelete={deleteRecord}
+              />
+            )}
           </div>
         </main>
       </div>

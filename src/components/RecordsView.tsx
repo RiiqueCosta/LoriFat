@@ -137,7 +137,7 @@ export function RecordsView({ type, records, onAdd, onDelete, onUpdate, onAddDir
                     <p className="text-xs text-zinc-500">{(rec as Client).company || 'Sem empresa'}</p>
                   </div>
                 </div>
-                <button onClick={() => onDelete(rec.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-colors">
+                <button onClick={() => handleDelete(rec.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-colors">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -182,8 +182,8 @@ export function RecordsView({ type, records, onAdd, onDelete, onUpdate, onAddDir
                     <p className="text-lg font-black text-brand">{formatCurrency((rec as any).total)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] text-zinc-400 font-bold uppercase">Emitido em</p>
-                    <p className="text-xs font-semibold text-zinc-700">{formatDate(rec.dateCreated)}</p>
+                    <p className="text-[10px] text-zinc-400 font-bold uppercase">Vencimento</p>
+                    <p className="text-xs font-semibold text-zinc-700">{(rec as Invoice).dueDate ? formatDate((rec as Invoice).dueDate) : formatDate(rec.dateCreated)}</p>
                   </div>
                 </div>
               </div>

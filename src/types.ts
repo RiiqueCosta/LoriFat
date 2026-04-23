@@ -3,12 +3,17 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type RecordType = 'invoice' | 'quote' | 'client' | 'expense';
+export type RecordType = 'invoice' | 'quote' | 'client' | 'expense' | 'note';
 
 export interface BaseRecord {
   id: string;
   type: RecordType;
   dateCreated: string;
+}
+
+export interface Note extends BaseRecord {
+  type: 'note';
+  title: string;
 }
 
 export interface Client extends BaseRecord {
