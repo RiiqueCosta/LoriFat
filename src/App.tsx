@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar, Navbar, ViewType } from './components/Navigation';
 import { DashboardView } from './components/DashboardView';
 import { RecordsView } from './components/RecordsView';
@@ -19,7 +19,15 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  const { records, config, addRecord, deleteRecord, updateRecord, isLoaded } = useData();
+  const { records, config, setConfig, addRecord, deleteRecord, updateRecord, isLoaded } = useData();
+
+  useEffect(() => {
+    if (config.theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [config.theme]);
 
   if (!isLoaded) {
     return (
@@ -37,8 +45,15 @@ export default function App() {
     setIsModalOpen(false);
   };
 
+  const handleThemeToggle = () => {
+    setConfig(prev => ({
+      ...prev,
+      theme: prev.theme === 'light' ? 'dark' : 'light'
+    }));
+  };
+
   return (
-    <div className="flex h-screen bg-zinc-50 text-zinc-900 transition-colors duration-300">
+    <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 transition-colors duration-300">
       <Sidebar 
         currentView={currentView} 
         onViewChange={setCurrentView} 
@@ -50,6 +65,8 @@ export default function App() {
         <Navbar 
           onMenuToggle={() => setIsSidebarOpen(true)} 
           companyName={config.companyName}
+          theme={config.theme}
+          onThemeToggle={handleThemeToggle}
         />
 
         <main className="flex-1 overflow-y-auto p-4 md:p-8">

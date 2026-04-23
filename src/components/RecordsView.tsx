@@ -100,8 +100,8 @@ export function RecordsView({ type, records, onAdd, onDelete, onUpdate, onAddDir
     <div className="space-y-6 fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-zinc-900 capitalize">{type === 'invoice' ? 'Faturas' : type === 'quote' ? 'Orçamentos' : type === 'client' ? 'Clientes' : 'Despesas'}</h2>
-          <p className="text-sm text-zinc-500">Gerencie seus registros de {type} com facilidade.</p>
+          <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 capitalize">{type === 'invoice' ? 'Faturas' : type === 'quote' ? 'Orçamentos' : type === 'client' ? 'Clientes' : 'Despesas'}</h2>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Gerencie seus registros de {type} com facilidade.</p>
         </div>
         <button 
           onClick={onAdd}
@@ -112,32 +112,32 @@ export function RecordsView({ type, records, onAdd, onDelete, onUpdate, onAddDir
         </button>
       </div>
 
-      <div className="p-4 bg-white rounded-2xl border border-zinc-200 shadow-sm flex items-center gap-3">
-        <Search className="w-5 h-5 text-zinc-400" />
+      <div className="p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex items-center gap-3">
+        <Search className="w-5 h-5 text-zinc-400 dark:text-zinc-500" />
         <input 
           type="text" 
           placeholder="Pesquisar registros..." 
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="flex-1 bg-transparent border-none outline-none text-sm text-zinc-900"
+          className="flex-1 bg-transparent border-none outline-none text-sm text-zinc-900 dark:text-zinc-100"
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filteredRecords.length > 0 ? filteredRecords.map(rec => (
-          <div key={rec.id} className="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm hover:border-brand/40 transition-all group">
+          <div key={rec.id} className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm hover:border-brand/40 transition-all group">
             {type === 'client' && (
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-zinc-100 rounded-full flex items-center justify-center font-bold text-zinc-500 text-lg">
+                  <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center font-bold text-zinc-500 dark:text-zinc-400 text-lg">
                     {(rec as Client).name.charAt(0)}
                   </div>
                   <div>
-                    <h4 className="font-bold text-zinc-900">{(rec as Client).name}</h4>
-                    <p className="text-xs text-zinc-500">{(rec as Client).company || 'Sem empresa'}</p>
+                    <h4 className="font-bold text-zinc-900 dark:text-zinc-100">{(rec as Client).name}</h4>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{(rec as Client).company || 'Sem empresa'}</p>
                   </div>
                 </div>
-                <button onClick={() => handleDelete(rec.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-colors">
+                <button onClick={() => handleDelete(rec.id)} className="p-2 text-zinc-300 dark:text-zinc-600 hover:text-red-500 transition-colors">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -148,42 +148,42 @@ export function RecordsView({ type, records, onAdd, onDelete, onUpdate, onAddDir
                 <div className="flex items-center justify-between">
                   <span className={cn(
                     "px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider",
-                    (rec as any).status === 'paid' || (rec as any).status === 'approved' ? "bg-green-100 text-green-700" : 
-                    (rec as any).status === 'rejected' ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700"
+                    (rec as any).status === 'paid' || (rec as any).status === 'approved' ? "bg-green-100 dark:bg-green-900/20 text-green-700" : 
+                    (rec as any).status === 'rejected' ? "bg-red-100 dark:bg-red-900/20 text-red-700" : "bg-yellow-100 dark:bg-yellow-900/20 text-yellow-700"
                   )}>
                     {(rec as any).status}
                   </span>
                   <div className="flex gap-1">
                     {rec.type === 'invoice' && (
-                      <button onClick={() => toggleInvoiceStatus(rec as Invoice)} className={cn("p-2 rounded-lg transition-colors", (rec as any).status === 'paid' ? "text-green-600 bg-green-50" : "text-yellow-600 bg-yellow-50")} title="Alterar Status">
+                      <button onClick={() => toggleInvoiceStatus(rec as Invoice)} className={cn("p-2 rounded-lg transition-colors", (rec as any).status === 'paid' ? "text-green-600 bg-green-50 dark:bg-green-900/10" : "text-yellow-600 bg-yellow-50 dark:bg-yellow-900/10")} title="Alterar Status">
                         { (rec as any).status === 'paid' ? <CheckCircle className="w-4 h-4" /> : <Clock className="w-4 h-4" /> }
                       </button>
                     )}
                     {rec.type === 'quote' && (
-                      <button onClick={() => cycleQuoteStatus(rec as Quote)} className="p-2 text-blue-600 bg-blue-50 rounded-lg transition-colors" title="Ciclar Status">
+                      <button onClick={() => cycleQuoteStatus(rec as Quote)} className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/10 rounded-lg transition-colors" title="Ciclar Status">
                         <AlertCircle className="w-4 h-4" />
                       </button>
                     )}
-                    <button onClick={() => downloadPDF(rec)} className="p-2 text-zinc-400 hover:text-brand transition-colors" title="Download PDF"><Download className="w-4 h-4" /></button>
-                    <button onClick={() => shareWhatsApp(rec)} className="p-2 text-zinc-400 hover:text-green-500 transition-colors" title="Compartilhar WhatsApp"><MessageCircle className="w-4 h-4" /></button>
+                    <button onClick={() => downloadPDF(rec)} className="p-2 text-zinc-400 dark:text-zinc-500 hover:text-brand transition-colors" title="Download PDF"><Download className="w-4 h-4" /></button>
+                    <button onClick={() => shareWhatsApp(rec)} className="p-2 text-zinc-400 dark:text-zinc-500 hover:text-green-500 transition-colors" title="Compartilhar WhatsApp"><MessageCircle className="w-4 h-4" /></button>
                     {rec.type === 'quote' && (
-                      <button onClick={() => convertToInvoice(rec as Quote)} className="p-2 text-zinc-400 hover:text-blue-500 transition-colors" title="Converter em Fatura"><CheckCircle className="w-4 h-4" /></button>
+                      <button onClick={() => convertToInvoice(rec as Quote)} className="p-2 text-zinc-400 dark:text-zinc-500 hover:text-blue-500 transition-colors" title="Converter em Fatura"><CheckCircle className="w-4 h-4" /></button>
                     )}
-                    <button onClick={() => handleDelete(rec.id)} className="p-2 text-zinc-400 hover:text-red-500 transition-colors" title="Excluir"><Trash2 className="w-4 h-4" /></button>
+                    <button onClick={() => handleDelete(rec.id)} className="p-2 text-zinc-400 dark:text-zinc-500 hover:text-red-500 transition-colors" title="Excluir"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
                 <div>
-                  <h4 className="font-bold text-zinc-900">{(rec as any).clientName}</h4>
-                  <p className="text-xs text-zinc-500 line-clamp-1">{(rec as any).description}</p>
+                  <h4 className="font-bold text-zinc-900 dark:text-zinc-100">{(rec as any).clientName}</h4>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-1">{(rec as any).description}</p>
                 </div>
-                <div className="flex items-center justify-between pt-4 border-t border-zinc-100">
+                <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-zinc-800">
                   <div>
-                    <p className="text-[10px] text-zinc-400 font-bold uppercase">Total</p>
+                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase">Total</p>
                     <p className="text-lg font-black text-brand">{formatCurrency((rec as any).total)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] text-zinc-400 font-bold uppercase">Vencimento</p>
-                    <p className="text-xs font-semibold text-zinc-700">{(rec as Invoice).dueDate ? formatDate((rec as Invoice).dueDate) : formatDate(rec.dateCreated)}</p>
+                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase">Vencimento</p>
+                    <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">{(rec as Invoice).dueDate ? formatDate((rec as Invoice).dueDate) : formatDate(rec.dateCreated)}</p>
                   </div>
                 </div>
               </div>
@@ -192,30 +192,30 @@ export function RecordsView({ type, records, onAdd, onDelete, onUpdate, onAddDir
             {type === 'expense' && (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                   <span className="px-2 py-1 rounded-md bg-zinc-100 text-zinc-600 text-[10px] font-bold uppercase tracking-wider">
+                   <span className="px-2 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-[10px] font-bold uppercase tracking-wider">
                     {(rec as Expense).category}
                   </span>
-                  <button onClick={() => handleDelete(rec.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-colors">
+                  <button onClick={() => handleDelete(rec.id)} className="p-2 text-zinc-300 dark:text-zinc-600 hover:text-red-500 transition-colors">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
                 <div>
-                  <h4 className="font-bold text-zinc-900">{(rec as Expense).description}</h4>
-                  <p className="text-xs text-zinc-500">{formatDate(rec.dateCreated)}</p>
+                  <h4 className="font-bold text-zinc-900 dark:text-zinc-100">{(rec as Expense).description}</h4>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">{formatDate(rec.dateCreated)}</p>
                 </div>
-                <div className="pt-4 border-t border-zinc-100">
-                  <p className="text-[10px] text-zinc-400 font-bold uppercase">Valor Pago</p>
+                <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                  <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold uppercase">Valor Pago</p>
                   <p className="text-lg font-black text-red-500">{formatCurrency((rec as Expense).total)}</p>
                 </div>
               </div>
             )}
           </div>
         )) : (
-          <div className="col-span-full py-20 flex flex-col items-center justify-center text-zinc-400">
-            <div className="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center mb-4">
+          <div className="col-span-full py-20 flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-600">
+            <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4">
               <Plus className="w-8 h-8 opacity-20" />
             </div>
-            <p className="font-medium">Nenhum registro encontrado</p>
+            <p className="font-medium text-zinc-500 dark:text-zinc-400">Nenhum registro encontrado</p>
             <p className="text-xs opacity-60">Comece criando um novo registro para ver dados aqui.</p>
           </div>
         )}
