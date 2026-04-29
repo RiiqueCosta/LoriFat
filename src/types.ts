@@ -9,6 +9,7 @@ export interface BaseRecord {
   id: string;
   type: RecordType;
   dateCreated: string;
+  ownerId: string;
 }
 
 export interface Note extends BaseRecord {
@@ -56,7 +57,7 @@ export interface Expense extends BaseRecord {
   category: string;
 }
 
-export type AppRecord = Client | Invoice | Quote | Expense;
+export type AppRecord = Client | Invoice | Quote | Expense | Note;
 
 export interface AppConfig {
   companyName: string;

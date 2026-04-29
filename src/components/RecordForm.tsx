@@ -37,6 +37,7 @@ export function RecordForm({ type, onSubmit, onCancel, clients }: RecordFormProp
     let record: any = {
       id: generateId(),
       type,
+      ownerId: '', // Will be set by useData hook
       ...formData
     };
 

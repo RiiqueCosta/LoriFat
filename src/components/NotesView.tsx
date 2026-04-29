@@ -31,7 +31,8 @@ export function NotesView({ records, onAdd, onDelete }: NotesViewProps) {
       id: generateId(),
       type: 'note',
       title: newNoteTitle,
-      dateCreated: new Date().toISOString()
+      dateCreated: new Date().toISOString(),
+      ownerId: '' // Will be set by useData hook
     };
 
     onAdd(note);

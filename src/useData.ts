@@ -4,10 +4,21 @@
  */
 
 import { useState, useEffect } from 'react';
+import { User } from 'firebase/auth';
+import { 
+  collection, 
+  query, 
+  onSnapshot, 
+  doc, 
+  setDoc, 
+  deleteDoc, 
+  updateDoc,
+  getDocFromServer,
+  getDoc,
+  serverTimestamp
+} from 'firebase/firestore';
+import { db, auth, handleFirestoreError, OperationType } from './lib/firebase';
 import { AppRecord, AppConfig } from './types';
-
-const STORAGE_KEY = 'loriti_gestao_data';
-const CONFIG_KEY = 'loriti_gestao_config';
 
 const DEFAULT_CONFIG: AppConfig = {
   companyName: 'Lori-TI Solutions',
@@ -17,64 +28,168 @@ const DEFAULT_CONFIG: AppConfig = {
   theme: 'light',
 };
 
-export function useData() {
+const ADMIN_EMAIL = 'luizcosta8604@gmail.com';
+
+export function useData(user: User | null) {
   const [records, setRecords] = useState<AppRecord[]>([]);
   const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [dataOwnerId, setDataOwnerId] = useState<string | null>(null);
 
   useEffect(() => {
-    const savedData = localStorage.getItem(STORAGE_KEY);
-    const savedConfig = localStorage.getItem(CONFIG_KEY);
-
-    if (savedData) {
+    // Test connection
+    const testConnection = async () => {
       try {
-        setRecords(JSON.parse(savedData));
-      } catch (e) {
-        console.error('Failed to parse saved data', e);
+        await getDocFromServer(doc(db, 'test', 'connection'));
+      } catch (error) {
+        if(error instanceof Error && error.message.includes('the client is offline')) {
+          console.error("Please check your Firebase configuration.");
+        }
       }
-    }
-
-    if (savedConfig) {
-      try {
-        setConfig(JSON.parse(savedConfig));
-      } catch (e) {
-        console.error('Failed to parse saved config', e);
-      }
-    }
-
-    setIsLoaded(true);
+    };
+    testConnection();
   }, []);
 
   useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
+    if (!user) {
+      setRecords([]);
+      setConfig(DEFAULT_CONFIG);
+      setDataOwnerId(null);
+      setIsLoaded(true);
+      return;
     }
-  }, [records, isLoaded]);
+
+    const resolveOwner = async () => {
+      if (user.email === ADMIN_EMAIL) {
+        setDataOwnerId(user.uid);
+      } else {
+        // Check if collaborator
+        try {
+          const allowedDoc = await getDoc(doc(db, 'allowed_users', user.email!));
+          if (allowedDoc.exists()) {
+            setDataOwnerId(allowedDoc.data().ownerUid);
+          } else {
+            setDataOwnerId(user.uid); // Fallback to own data
+          }
+        } catch (err) {
+          console.error("Error resolving owner:", err);
+          setDataOwnerId(user.uid);
+        }
+      }
+    };
+
+    resolveOwner();
+  }, [user]);
 
   useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+    if (!user || !dataOwnerId) {
+      if (!user) setIsLoaded(true);
+      return;
     }
-  }, [config, isLoaded]);
 
-  const addRecord = (record: AppRecord) => {
-    setRecords((prev) => [...prev, record]);
+    setIsLoaded(false);
+
+    const recordsPath = `users/${dataOwnerId}/records`;
+    const q = query(collection(db, recordsPath));
+
+    const unsubscribeRecords = onSnapshot(q, (snapshot) => {
+      const data: AppRecord[] = [];
+      snapshot.forEach((doc) => {
+        data.push({ ...doc.data(), id: doc.id } as AppRecord);
+      });
+      setRecords(data);
+      setIsLoaded(true);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, recordsPath);
+    });
+
+    const configPath = `users/${dataOwnerId}/settings/config`;
+    const unsubscribeConfig = onSnapshot(doc(db, configPath), (docSnap) => {
+      if (docSnap.exists()) {
+        setConfig(docSnap.data() as AppConfig);
+      } else {
+        setConfig(DEFAULT_CONFIG);
+      }
+    }, (error) => {
+       handleFirestoreError(error, OperationType.GET, configPath);
+    });
+
+    return () => {
+      unsubscribeRecords();
+      unsubscribeConfig();
+    };
+  }, [user, dataOwnerId]);
+
+  const addRecord = async (record: AppRecord) => {
+    if (!user || !dataOwnerId) return;
+
+    const recordWithMeta = {
+      ...record,
+      ownerId: dataOwnerId,
+      createdBy: user.uid,
+      dateCreated: record.dateCreated || new Date().toISOString(),
+      updatedAt: serverTimestamp()
+    };
+
+    const path = `users/${dataOwnerId}/records/${record.id}`;
+    try {
+      await setDoc(doc(db, path), recordWithMeta);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, path);
+    }
   };
 
-  const updateRecord = (id: string, updatedRecord: Partial<AppRecord>) => {
-    setRecords((prev) =>
-      prev.map((r) => (r.id === id ? ({ ...r, ...updatedRecord } as AppRecord) : r))
-    );
+  const updateRecord = async (id: string, updatedRecord: Partial<AppRecord>) => {
+    if (!user || !dataOwnerId) return;
+
+    const path = `users/${dataOwnerId}/records/${id}`;
+    try {
+      await updateDoc(doc(db, path), {
+        ...updatedRecord,
+        updatedAt: serverTimestamp(),
+        lastUpdatedBy: user.uid
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
   };
 
-  const deleteRecord = (id: string) => {
-    setRecords((prev) => prev.filter((r) => r.id !== id));
+  const deleteRecord = async (id: string) => {
+    if (!user || !dataOwnerId) return;
+
+    const path = `users/${dataOwnerId}/records/${id}`;
+    try {
+      await deleteDoc(doc(db, path));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  };
+
+  const setConfigOnFirestore = async (newConfig: AppConfig | ((prev: AppConfig) => AppConfig)) => {
+    if (!user || !dataOwnerId) return;
+
+    const path = `users/${dataOwnerId}/settings/config`;
+    const finalConfig = typeof newConfig === 'function' ? newConfig(config) : newConfig;
+    
+    // Optimistic update
+    setConfig(finalConfig);
+
+    try {
+      await setDoc(doc(db, path), finalConfig);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+      // Rollback on error
+      const docSnap = await getDocFromServer(doc(db, path));
+      if (docSnap.exists()) {
+        setConfig(docSnap.data() as AppConfig);
+      }
+    }
   };
 
   return {
     records,
     config,
-    setConfig,
+    setConfig: setConfigOnFirestore,
     addRecord,
     updateRecord,
     deleteRecord,

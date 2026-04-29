@@ -1,0 +1,55 @@
+{
+  "entities": {
+    "Record": {
+      "title": "Application Record",
+      "description": "Any transaction or entity in the system (invoice, quote, client, expense, note)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "enum": ["invoice", "quote", "client", "expense", "note"] },
+        "dateCreated": { "type": "string", "format": "date-time" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["id", "type", "dateCreated", "ownerId"]
+    },
+    "Config": {
+      "title": "Application Settings",
+      "description": "User specific application settings and theme preference",
+      "type": "object",
+      "properties": {
+        "companyName": { "type": "string" },
+        "companyPhone": { "type": "string" },
+        "companyEmail": { "type": "string" },
+        "companyCnpj": { "type": "string" },
+        "theme": { "enum": ["light", "dark"] }
+      },
+      "required": ["companyName", "theme"]
+    },
+    "AllowedUser": {
+      "title": "Allowed User",
+      "description": "User invited to access a specific owner's data",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string" },
+        "addedAt": { "type": "string", "format": "date-time" },
+        "ownerUid": { "type": "string" }
+      },
+      "required": ["email", "role", "addedAt", "ownerUid"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/records/{recordId}": {
+      "schema": "Record",
+      "description": "User's business records"
+    },
+    "/users/{userId}/settings/config": {
+      "schema": "Config",
+      "description": "User's application configuration"
+    },
+    "/allowed_users/{email}": {
+      "schema": "AllowedUser",
+      "description": "Explicitly invited users for system access"
+    }
+  }
+}

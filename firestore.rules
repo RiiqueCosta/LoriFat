@@ -1,0 +1,104 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdminEmail() {
+      return isSignedIn() && request.auth.token.email == 'luizcosta8604@gmail.com' && request.auth.token.email_verified == true;
+    }
+
+    function isAuthorizedMember(userId) {
+      return isOwner(userId) || (
+        isSignedIn() && 
+        exists(/databases/$(database)/documents/allowed_users/$(request.auth.token.email)) && 
+        get(/databases/$(database)/documents/allowed_users/$(request.auth.token.email)).data.ownerUid == userId
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Entity Validations
+    function isValidRecord(data, userId) {
+      return data.keys().hasAll(['id', 'type', 'dateCreated', 'ownerId']) &&
+             data.keys().size() >= 4 &&
+             data.id is string && data.id.size() <= 128 &&
+             data.type in ['invoice', 'quote', 'client', 'expense', 'note'] &&
+             data.dateCreated is string &&
+             data.ownerId == userId &&
+             (data.keys().hasAny(['updatedAt']) ? data.updatedAt == request.time : true) &&
+             (data.keys().hasAny(['createdBy']) ? data.createdBy == request.auth.uid : true);
+    }
+
+    function isValidConfig(data) {
+      return data.keys().hasAll(['companyName', 'theme']) &&
+             data.companyName is string && data.companyName.size() <= 100 &&
+             data.theme in ['light', 'dark'] &&
+             (data.keys().hasAny(['companyPhone']) ? data.companyPhone is string && data.companyPhone.size() <= 20 : true) &&
+             (data.keys().hasAny(['companyEmail']) ? data.companyEmail is string && data.companyEmail.size() <= 100 : true) &&
+             (data.keys().hasAny(['companyCnpj']) ? data.companyCnpj is string && data.companyCnpj.size() <= 20 : true);
+    }
+
+    function isValidAllowedUser(data) {
+      return data.keys().hasAll(['email', 'role', 'addedAt', 'ownerUid']) &&
+             data.email is string && data.role in ['collaborator', 'admin'] &&
+             data.ownerUid == request.auth.uid;
+    }
+
+    // Resource Paths
+    match /allowed_users/{email} {
+      // The admin can manage all, users can get their own to check auth
+      allow get: if isSignedIn(); 
+      allow list: if isAdminEmail();
+      allow create, update, delete: if isAdminEmail() && isValidAllowedUser(incoming());
+    }
+
+    match /users/{userId} {
+      // Each user can only read and write their own data, OR if they are an authorized collaborator.
+      allow read, write: if isAuthorizedMember(userId);
+
+      match /records/{recordId} {
+        allow get: if isAuthorizedMember(userId) && isValidId(recordId);
+        allow list: if isAuthorizedMember(userId);
+        allow create: if isAuthorizedMember(userId) && isValidId(recordId) && isValidRecord(incoming(), userId);
+        allow update: if isAuthorizedMember(userId) && isValidId(recordId) && isValidRecord(incoming(), userId) && (
+          // Action: Update Record Fields
+          // Restricts updates to non-immutable fields and ensures updatedAt is present.
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'title', 'name', 'company', 'email', 'phone', 'description', 'total', 'status', 
+            'dueDate', 'category', 'clientId', 'clientName', 'quantity', 'unitPrice', 
+            'taxPercent', 'updatedAt', 'lastUpdatedBy'
+          ])
+        );
+        allow delete: if isAuthorizedMember(userId) && isValidId(recordId);
+      }
+
+      match /settings/config {
+        allow get: if isAuthorizedMember(userId);
+        allow write: if isAuthorizedMember(userId) && isValidConfig(incoming());
+      }
+    }
+  }
+}
