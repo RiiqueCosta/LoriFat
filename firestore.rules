@@ -17,7 +17,7 @@ service cloud.firestore {
     }
 
     function isAdminEmail() {
-      return isSignedIn() && request.auth.token.email == 'luizcosta8604@gmail.com' && request.auth.token.email_verified == true;
+      return isSignedIn() && request.auth.token.email == 'luizcosta8604@gmail.com';
     }
 
     function isAuthorizedMember(userId) {
@@ -69,8 +69,8 @@ service cloud.firestore {
 
     // Resource Paths
     match /allowed_users/{email} {
-      // The admin can manage all, users can get their own to check auth
-      allow get: if isSignedIn(); 
+      // Users can get their own status, admin can list and manage everything
+      allow get: if isSignedIn() && (request.auth.token.email == email || isAdminEmail()); 
       allow list: if isAdminEmail();
       allow create, update, delete: if isAdminEmail() && isValidAllowedUser(incoming());
     }
