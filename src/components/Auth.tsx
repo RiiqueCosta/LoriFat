@@ -18,12 +18,19 @@ export function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!isLogin && password !== confirmPassword) {
+      setError('As senhas não coincidem.');
+      return;
+    }
+
     setLoading(true);
 
     const emailLower = email.toLowerCase().trim();
@@ -89,6 +96,15 @@ export function Auth() {
             </p>
           </div>
 
+          {!isLogin && (
+            <div className="mb-6 p-4 bg-brand/5 dark:bg-brand/10 border border-brand/20 rounded-2xl animate-in fade-in slide-in-from-top-2">
+              <p className="text-[11px] text-brand-dark dark:text-brand font-medium leading-relaxed">
+                <span className="font-bold block mb-1">Atenção Colaborador:</span>
+                Use o e-mail que o administrador autorizou. Você definirá sua senha agora para acessos futuros.
+              </p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5 ml-1">E-mail</label>
@@ -108,7 +124,9 @@ export function Auth() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5 ml-1">Senha</label>
+              <label className="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5 ml-1">
+                {isLogin ? 'Senha' : 'Definir Senha'}
+              </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-zinc-400">
                   <Lock className="w-4 h-4" />
@@ -123,6 +141,25 @@ export function Auth() {
                 />
               </div>
             </div>
+
+            {!isLogin && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <label className="block text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1.5 ml-1">Confirmar Senha</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-zinc-400">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3 bg-zinc-50 dark:bg-zinc-800 border-none rounded-2xl focus:ring-2 focus:ring-brand/50 outline-none text-sm transition-all dark:text-zinc-100"
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
+            )}
 
             {error && (
               <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 rounded-2xl text-xs font-bold animate-in fade-in slide-in-from-top-1">
@@ -141,7 +178,7 @@ export function Auth() {
               ) : (
                 <>
                   {isLogin ? <LogIn className="w-4 h-4" /> : <UserPlus className="w-4 h-4" />}
-                  {isLogin ? 'Entrar' : 'Cadastrar Registro'}
+                  {isLogin ? 'Entrar no Sistema' : 'Criar Minha Senha'}
                 </>
               )}
             </button>
