@@ -184,15 +184,21 @@ export function Auth() {
             </button>
           </form>
 
-          <div className="mt-8 text-center px-4">
+          <div className="mt-8 pt-6 border-t border-zinc-100 dark:border-zinc-800 text-center">
+            <p className="text-xs text-zinc-500 dark:text-zinc-500 mb-3 uppercase tracking-widest font-bold">
+              {isLogin ? 'Opções de Acesso' : 'Já é cadastrado?'}
+            </p>
             <button
+              type="button"
               onClick={() => {
                 setIsLogin(!isLogin);
                 setError(null);
+                setPassword('');
+                setConfirmPassword('');
               }}
-              className="text-xs font-bold text-zinc-400 hover:text-brand transition-colors uppercase tracking-widest"
+              className="px-6 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs font-black text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all uppercase tracking-widest active:scale-95"
             >
-              {isLogin ? 'Sou um novo colaborador' : 'Já possuo login'}
+              {isLogin ? 'Sou um novo colaborador' : 'Voltar para o Login'}
             </button>
           </div>
         </div>

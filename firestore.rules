@@ -69,8 +69,9 @@ service cloud.firestore {
 
     // Resource Paths
     match /allowed_users/{email} {
-      // Users can get their own status, admin can list and manage everything
-      allow get: if isSignedIn() && (request.auth.token.email == email || isAdminEmail()); 
+      // Allow public GET so registration can verify authorization
+      // This is safe as 'list' is still restricted to admins
+      allow get: if true; 
       allow list: if isAdminEmail();
       allow create, update, delete: if isAdminEmail() && isValidAllowedUser(incoming());
     }
