@@ -49,7 +49,10 @@ service cloud.firestore {
              data.dateCreated is string &&
              data.ownerId == userId &&
              (data.keys().hasAny(['updatedAt']) ? data.updatedAt == request.time : true) &&
-             (data.keys().hasAny(['createdBy']) ? data.createdBy == request.auth.uid : true);
+             (data.keys().hasAny(['createdBy']) ? data.createdBy == request.auth.uid : true) &&
+             (data.keys().hasAny(['items']) ? data.items is list && data.items.size() <= 100 : true) &&
+             (data.keys().hasAny(['discount']) ? data.discount is number && data.discount >= 0 : true) &&
+             (data.keys().hasAny(['notes']) ? data.notes is string && data.notes.size() <= 5000 : true);
     }
 
     function isValidConfig(data) {
@@ -90,7 +93,7 @@ service cloud.firestore {
           incoming().diff(existing()).affectedKeys().hasOnly([
             'title', 'name', 'company', 'email', 'phone', 'description', 'total', 'status', 
             'dueDate', 'category', 'clientId', 'clientName', 'quantity', 'unitPrice', 
-            'taxPercent', 'updatedAt', 'lastUpdatedBy'
+            'taxPercent', 'items', 'discount', 'notes', 'updatedAt', 'lastUpdatedBy'
           ])
         );
         allow delete: if isAuthorizedMember(userId) && isValidId(recordId);

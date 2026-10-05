@@ -13,15 +13,20 @@ import { RecordsView } from './components/RecordsView';
 import { ReportsView } from './components/ReportsView';
 import { NotesView } from './components/NotesView';
 import { AdminView } from './components/AdminView';
-import { RecordForm } from './components/RecordForm';
+import { RecordForm, RecordPrefill } from './components/RecordForm';
+import { ProposalImport } from './components/ProposalImport';
 import { Modal } from './components/Modal';
 import { useData } from './useData';
-import { AppRecord, Client } from './types';
+import { AppRecord, Client, RecordType } from './types';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [formType, setFormType] = useState<RecordType | null>(null);
+  const [prefill, setPrefill] = useState<RecordPrefill | undefined>(undefined);
+  const [formKey, setFormKey] = useState(0);
   const [user, setUser] = useState<User | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
   
@@ -58,10 +63,37 @@ export default function App() {
     return <Auth />;
   }
 
+  const closeForm = () => {
+    setIsModalOpen(false);
+    setFormType(null);
+    setPrefill(undefined);
+  };
+
+  const openNewForm = () => {
+    setFormType(null);
+    setPrefill(undefined);
+    setFormKey(k => k + 1);
+    setIsModalOpen(true);
+  };
+
   const handleAddRecord = (record: AppRecord) => {
     addRecord(record);
-    setIsModalOpen(false);
+    if (record.type === 'invoice' || record.type === 'quote') {
+      setCurrentView(record.type === 'invoice' ? 'invoices' : 'quotes');
+    }
+    closeForm();
   };
+
+  const handleImportConfirm = (type: 'quote' | 'invoice', data: RecordPrefill) => {
+    setIsImportOpen(false);
+    setFormType(type);
+    setPrefill(data);
+    setFormKey(k => k + 1);
+    setIsModalOpen(true);
+  };
+
+  const defaultFormType: RecordType =
+    currentView === 'dashboard' || currentView === 'reports' ? 'invoice' : currentView.slice(0, -1) as RecordType;
 
   const handleThemeToggle = () => {
     setConfig(prev => ({
@@ -95,7 +127,8 @@ export default function App() {
               <RecordsView 
                 type={currentView.slice(0, -1) as any} 
                 records={records} 
-                onAdd={() => setIsModalOpen(true)}
+                onAdd={openNewForm}
+                onImportAI={() => setIsImportOpen(true)}
                 onDelete={deleteRecord}
                 onUpdate={updateRecord}
                 onAddDirectly={addRecord}
@@ -117,14 +150,28 @@ export default function App() {
 
       <Modal 
         isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)}
-        title={`Novo Registro`}
+        onClose={closeForm}
+        title={prefill ? (formType === 'invoice' ? 'Nova Fatura (IA)' : 'Novo Orçamento (IA)') : 'Novo Registro'}
       >
         <RecordForm 
-          type={currentView === 'dashboard' || currentView === 'reports' ? 'invoice' : currentView.slice(0, -1) as any}
+          key={formKey}
+          type={formType || defaultFormType}
           clients={records.filter(r => r.type === 'client') as Client[]} 
-          onCancel={() => setIsModalOpen(false)}
+          initialData={prefill}
+          onCreateClient={(client) => addRecord(client)}
+          onCancel={closeForm}
           onSubmit={handleAddRecord}
+        />
+      </Modal>
+
+      <Modal
+        isOpen={isImportOpen}
+        onClose={() => setIsImportOpen(false)}
+        title="Importar proposta com IA"
+      >
+        <ProposalImport
+          onCancel={() => setIsImportOpen(false)}
+          onConfirm={handleImportConfirm}
         />
       </Modal>
     </div>

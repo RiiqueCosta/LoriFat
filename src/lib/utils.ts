@@ -25,3 +25,11 @@ export const formatDate = (date: string) => {
 export const generateId = () => {
   return Math.random().toString(36).substring(2, 11);
 };
+
+export const escapeHtml = (value: unknown) =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');

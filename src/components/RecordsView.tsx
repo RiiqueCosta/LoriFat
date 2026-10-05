@@ -4,10 +4,11 @@
  */
 
 import React, { useState } from 'react';
-import { Plus, Search, FileText, Download, MessageCircle, MoreVertical, Trash2, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Plus, Search, FileText, Download, MessageCircle, MoreVertical, Trash2, CheckCircle, Clock, AlertCircle, Sparkles } from 'lucide-react';
 import { AppRecord, RecordType, Client, Invoice, Quote, Expense, AppConfig } from '../types';
 import { cn, formatCurrency, formatDate, generateId } from '../lib/utils';
 import { getInvoiceTemplate, getQuoteTemplate } from '../pdfTemplates';
+import { getItems, buildPricingFields } from '../lib/billing';
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
 
@@ -19,9 +20,11 @@ interface RecordsViewProps {
   onUpdate: (id: string, data: Partial<AppRecord>) => void;
   onAddDirectly: (record: AppRecord) => void;
   config: AppConfig;
+  /** Abre a importação de proposta com IA (apenas faturas/orçamentos). */
+  onImportAI?: () => void;
 }
 
-export function RecordsView({ type, records, onAdd, onDelete, onUpdate, onAddDirectly, config }: RecordsViewProps) {
+export function RecordsView({ type, records, onAdd, onDelete, onUpdate, onAddDirectly, config, onImportAI }: RecordsViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
   
   const filteredRecords = records.filter(r => {
@@ -29,7 +32,7 @@ export function RecordsView({ type, records, onAdd, onDelete, onUpdate, onAddDir
     if (r.type !== type) return false;
     
     if (r.type === 'client') return r.name.toLowerCase().includes(searchLower) || r.company.toLowerCase().includes(searchLower);
-    if (r.type === 'invoice' || r.type === 'quote') return r.clientName.toLowerCase().includes(searchLower) || r.description.toLowerCase().includes(searchLower);
+    if (r.type === 'invoice' || r.type === 'quote') return (r.clientName || '').toLowerCase().includes(searchLower) || getItems(r).some(i => i.description.toLowerCase().includes(searchLower));
     if (r.type === 'expense') return r.description.toLowerCase().includes(searchLower) || r.category.toLowerCase().includes(searchLower);
     return true;
   });
@@ -44,11 +47,8 @@ export function RecordsView({ type, records, onAdd, onDelete, onUpdate, onAddDir
     const newInv: Invoice = {
       clientId: rec.clientId,
       clientName: rec.clientName,
-      description: rec.description,
-      quantity: rec.quantity,
-      unitPrice: rec.unitPrice,
-      taxPercent: rec.taxPercent,
-      total: rec.total,
+      ...buildPricingFields(getItems(rec), rec.taxPercent || 0, rec.discount || 0),
+      notes: rec.notes || '',
       id: generateId(),
       type: 'invoice',
       status: 'pending',
@@ -89,9 +89,12 @@ export function RecordsView({ type, records, onAdd, onDelete, onUpdate, onAddDir
   };
 
   const shareWhatsApp = (rec: any) => {
-    const msg = `${config.companyName} - ${rec.type.toUpperCase()}\n` +
+    const itemsText = getItems(rec)
+      .map(i => `• ${i.description} — ${i.quantity} x ${formatCurrency(i.unitPrice)}`)
+      .join('\n');
+    const msg = `${config.companyName} - ${rec.type === 'invoice' ? 'FATURA' : 'ORÇAMENTO'}\n` +
       `Cliente: ${rec.clientName}\n` +
-      `Serviço: ${rec.description}\n` +
+      `Serviços:\n${itemsText}\n` +
       `Total: ${formatCurrency(rec.total)}\n` +
       `Status: ${rec.status}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
@@ -104,6 +107,16 @@ export function RecordsView({ type, records, onAdd, onDelete, onUpdate, onAddDir
           <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 capitalize">{type === 'invoice' ? 'Faturas' : type === 'quote' ? 'Orçamentos' : type === 'client' ? 'Clientes' : 'Despesas'}</h2>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">Gerencie seus registros de {type} com facilidade.</p>
         </div>
+        <div className="flex flex-col sm:flex-row gap-2">
+        {(type === 'invoice' || type === 'quote') && onImportAI && (
+          <button
+            onClick={onImportAI}
+            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl font-bold text-sm hover:opacity-90 transition-all"
+          >
+            <Sparkles className="w-4 h-4 text-brand" />
+            Importar proposta com IA
+          </button>
+        )}
         <button 
           onClick={onAdd}
           className="flex items-center justify-center gap-2 px-5 py-2.5 bg-brand text-white rounded-xl font-bold text-sm shadow-md shadow-brand/10 hover:bg-brand-dark transition-all"
@@ -111,6 +124,7 @@ export function RecordsView({ type, records, onAdd, onDelete, onUpdate, onAddDir
           <Plus className="w-4 h-4" />
           Novo {type === 'client' ? 'Cliente' : type === 'invoice' ? 'Fatura' : type === 'quote' ? 'Orçamento' : 'Despesa'}
         </button>
+        </div>
       </div>
 
       <div className="p-4 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm flex items-center gap-3">
@@ -176,6 +190,9 @@ export function RecordsView({ type, records, onAdd, onDelete, onUpdate, onAddDir
                 <div>
                   <h4 className="font-bold text-zinc-900 dark:text-zinc-100">{(rec as any).clientName}</h4>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-1">{(rec as any).description}</p>
+                  {getItems(rec as Invoice).length > 1 && (
+                    <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase mt-1">{getItems(rec as Invoice).length} itens</p>
+                  )}
                 </div>
                 <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-zinc-800">
                   <div>
