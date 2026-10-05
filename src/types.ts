@@ -25,6 +25,12 @@ export interface Client extends BaseRecord {
   company: string;
 }
 
+export interface LineItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+}
+
 export interface Invoice extends BaseRecord {
   type: 'invoice';
   clientId: string;
@@ -36,6 +42,12 @@ export interface Invoice extends BaseRecord {
   total: number;
   status: 'pending' | 'paid';
   dueDate: string;
+  /** Lista de itens (novo). Registros antigos usam apenas description/quantity/unitPrice. */
+  items?: LineItem[];
+  /** Desconto em R$ aplicado sobre o subtotal. */
+  discount?: number;
+  /** Observações / condições exibidas no PDF. */
+  notes?: string;
 }
 
 export interface Quote extends BaseRecord {
@@ -48,6 +60,12 @@ export interface Quote extends BaseRecord {
   taxPercent: number;
   total: number;
   status: 'pending' | 'approved' | 'rejected';
+  /** Lista de itens (novo). Registros antigos usam apenas description/quantity/unitPrice. */
+  items?: LineItem[];
+  /** Desconto em R$ aplicado sobre o subtotal. */
+  discount?: number;
+  /** Observações / condições exibidas no PDF. */
+  notes?: string;
 }
 
 export interface Expense extends BaseRecord {
