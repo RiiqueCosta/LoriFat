@@ -145,21 +145,39 @@ function normalize(raw: any): ExtractedProposal {
 }
 
 function friendlyError(err: unknown): Error {
-  const code = String((err as any)?.code || '');
-  const msg = String((err as any)?.message || err);
-  if (code.includes('api-not-enabled') || /not enabled|has not been used|PERMISSION_DENIED/i.test(msg)) {
-    return new Error('A IA ainda não está ativada no Firebase. Ative o "Firebase AI Logic" (Gemini Developer API) no console do Firebase.');
+  const e = err as any;
+  const code = String(e?.code || '');
+  const status: number | undefined = e?.customErrorData?.status;
+  const msg = String(e?.message || err);
+  // Mensagem do Google sem a URL, para mostrar como detalhe.
+  const detail = msg.replace(/^.*?Error fetching from \S+:\s*/, '').slice(0, 300);
+  const withDetail = (text: string) => new Error(`${text}\n\nDetalhe técnico: ${detail}`);
+
+  if (code.includes('api-not-enabled') || /SERVICE_DISABLED/i.test(msg)) {
+    return withDetail('A IA ainda não está ativada no Firebase. Abra o console do Firebase → AI Logic → "Get started" (Gemini Developer API). Se acabou de ativar, aguarde alguns minutos.');
   }
-  if (/quota|429|RESOURCE_EXHAUSTED/i.test(msg)) {
-    return new Error('Limite de uso da IA atingido. Aguarde alguns minutos e tente novamente.');
+  if (/API_KEY_SERVICE_BLOCKED|API key not valid|API_KEY_INVALID|referer|blocked/i.test(msg)) {
+    return withDetail('A chave de API do Firebase está bloqueando a IA. No Google Cloud Console → APIs e serviços → Credenciais, edite a "Browser key" do projeto e inclua a "Firebase AI Logic API" (e localhost/seu domínio, se houver restrição de sites).');
   }
-  if (/not found|404/i.test(msg) && /model/i.test(msg)) {
-    return new Error(`O modelo "${MODEL_NAME}" não está disponível. Defina outro em VITE_GEMINI_MODEL.`);
+  if (status === 429 || /quota|RESOURCE_EXHAUSTED/i.test(msg)) {
+    return withDetail('Limite de uso da IA atingido. Aguarde alguns minutos e tente novamente.');
   }
-  if (/fetch|network/i.test(msg)) {
-    return new Error('Falha de conexão com a IA. Verifique sua internet e tente novamente.');
+  if (status === 404 || (/not found/i.test(msg) && /model/i.test(msg))) {
+    return withDetail(`O modelo "${MODEL_NAME}" não está disponível. Defina outro em VITE_GEMINI_MODEL no arquivo .env.`);
   }
-  return new Error('Não foi possível ler a proposta: ' + msg);
+  if (/app.?check/i.test(msg) || status === 401) {
+    return withDetail('O Firebase recusou a chamada (App Check/autenticação). Verifique se o App Check está exigido para o AI Logic.');
+  }
+  if (status === 403) {
+    return withDetail('O Google recusou o acesso à IA (permissão negada).');
+  }
+  if (status === 400) {
+    return withDetail('A IA recusou o pedido (requisição inválida).');
+  }
+  if (!status && /Failed to fetch|NetworkError|network/i.test(msg)) {
+    return withDetail('Falha de conexão com a IA. Verifique sua internet (ou bloqueadores/antivírus) e tente novamente.');
+  }
+  return withDetail('Não foi possível ler a proposta.');
 }
 
 export async function extractProposal(input: ProposalInput): Promise<ExtractedProposal> {

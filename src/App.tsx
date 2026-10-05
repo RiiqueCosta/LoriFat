@@ -153,8 +153,8 @@ export default function App() {
         onClose={closeForm}
         title={prefill ? (formType === 'invoice' ? 'Nova Fatura (IA)' : 'Novo Orçamento (IA)') : 'Novo Registro'}
       >
+        <div key={formKey}>
         <RecordForm 
-          key={formKey}
           type={formType || defaultFormType}
           clients={records.filter(r => r.type === 'client') as Client[]} 
           initialData={prefill}
@@ -162,6 +162,7 @@ export default function App() {
           onCancel={closeForm}
           onSubmit={handleAddRecord}
         />
+        </div>
       </Modal>
 
       <Modal

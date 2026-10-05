@@ -313,7 +313,7 @@ export function ProposalImport({ onCancel, onConfirm }: ProposalImportProps) {
         </div>
       )}
 
-      {error && <p className="p-3 rounded-xl bg-red-50 text-red-600 text-sm">{error}</p>}
+      {error && <p className="p-3 rounded-xl bg-red-50 text-red-600 text-sm whitespace-pre-line break-words">{error}</p>}
 
       <div className="pt-2 flex gap-3">
         <button type="button" onClick={onCancel} className="flex-1 py-3.5 rounded-2xl bg-zinc-100 text-zinc-600 font-bold text-sm hover:bg-zinc-200 transition-colors">
