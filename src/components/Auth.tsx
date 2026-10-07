@@ -4,13 +4,14 @@
  */
 
 import React, { useState } from 'react';
-import { 
-  signInWithEmailAndPassword, 
+import {
+  signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   AuthError
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../lib/firebase';
+import { auth, db, ADMIN_EMAIL } from '../lib/firebase';
 import { Mail, Lock, LogIn, UserPlus, AlertCircle, ShieldAlert } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -21,6 +22,23 @@ export function Auth() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
+
+  const handleReset = async () => {
+    setError(null);
+    setInfo(null);
+    const emailLower = email.toLowerCase().trim();
+    if (!emailLower) {
+      setError('Digite seu e-mail acima para receber o link de redefinição.');
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, emailLower);
+      setInfo('Enviamos um link para redefinir a senha. Confira seu e-mail (e a caixa de spam).');
+    } catch {
+      setError('Não foi possível enviar o e-mail de redefinição. Verifique o endereço.');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +52,6 @@ export function Auth() {
     setLoading(true);
 
     const emailLower = email.toLowerCase().trim();
-    const ADMIN_EMAIL = 'luizcosta8604@gmail.com';
 
     try {
       if (isLogin) {
@@ -60,7 +77,15 @@ export function Auth() {
           setError('Usuário não encontrado.');
           break;
         case 'auth/wrong-password':
-          setError('Senha incorreta.');
+        case 'auth/invalid-credential':
+        case 'auth/invalid-login-credentials':
+          setError('E-mail ou senha incorretos.');
+          break;
+        case 'auth/too-many-requests':
+          setError('Muitas tentativas. Aguarde alguns minutos ou redefina sua senha.');
+          break;
+        case 'auth/network-request-failed':
+          setError('Sem conexão com a internet.');
           break;
         case 'auth/email-already-in-use':
           setError('Este e-mail já está em uso. Tente fazer login ou use outro e-mail.');
@@ -161,6 +186,20 @@ export function Auth() {
               </div>
             )}
 
+            {isLogin && (
+              <div className="flex justify-end -mt-1">
+                <button type="button" onClick={handleReset} className="text-xs font-semibold text-zinc-500 hover:text-brand dark:text-zinc-400">
+                  Esqueci minha senha
+                </button>
+              </div>
+            )}
+
+            {info && (
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded-2xl text-xs font-semibold">
+                {info}
+              </div>
+            )}
+
             {error && (
               <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 rounded-2xl text-xs font-bold animate-in fade-in slide-in-from-top-1">
                 <ShieldAlert className="w-4 h-4 shrink-0" />
@@ -193,6 +232,7 @@ export function Auth() {
               onClick={() => {
                 setIsLogin(!isLogin);
                 setError(null);
+                setInfo(null);
                 setPassword('');
                 setConfirmPassword('');
               }}

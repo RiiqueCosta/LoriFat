@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -27,7 +27,14 @@ if (typeof window !== 'undefined') {
     });
   }
 }
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+/** E-mail do administrador (dono dos dados). */
+export const ADMIN_EMAIL = 'luizcosta8604@gmail.com';
+
+// Cache local persistente: o app abre mais rápido e funciona offline,
+// sincronizando quando a conexão volta.
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+}, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 
 export enum OperationType {
@@ -64,7 +71,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     path
   }
   console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  return errInfo;
 }
 
 export default app;

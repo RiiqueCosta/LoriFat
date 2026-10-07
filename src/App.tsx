@@ -3,178 +3,135 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from './lib/firebase';
+import { FeedbackProvider } from './lib/feedback';
+import { useRoute, navigate } from './lib/router';
+import { invoiceStatus } from './lib/billing';
+import { useData, DataApi } from './useData';
+import { ActionsProvider, useActions } from './actions';
 import { Auth } from './components/Auth';
-import { Sidebar, Navbar, ViewType } from './components/Navigation';
-import { DashboardView } from './components/DashboardView';
-import { RecordsView } from './components/RecordsView';
-import { ReportsView } from './components/ReportsView';
-import { NotesView } from './components/NotesView';
-import { AdminView } from './components/AdminView';
-import { RecordForm, RecordPrefill } from './components/RecordForm';
-import { ProposalImport } from './components/ProposalImport';
-import { Modal } from './components/Modal';
-import { useData } from './useData';
-import { AppRecord, Client, RecordType } from './types';
+import { AppShell, QuickAction } from './components/Navigation';
+import { DashboardView } from './views/DashboardView';
+import { DocumentsView } from './views/DocumentsView';
+import { ClientsView } from './views/ClientsView';
+import { ClientDetailView } from './views/ClientDetailView';
+import { ExpensesView } from './views/ExpensesView';
+import { RecurringView } from './views/RecurringView';
+import { ReportsView } from './views/ReportsView';
+import { AssistantView } from './views/AssistantView';
+import { NotesView } from './views/NotesView';
+import { SettingsView } from './views/SettingsView';
+import { AdminView } from './views/AdminView';
 
 export default function App() {
-  const [currentView, setCurrentView] = useState<ViewType>('dashboard');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isImportOpen, setIsImportOpen] = useState(false);
-  const [formType, setFormType] = useState<RecordType | null>(null);
-  const [prefill, setPrefill] = useState<RecordPrefill | undefined>(undefined);
-  const [formKey, setFormKey] = useState(0);
+  return (
+    <FeedbackProvider>
+      <Root />
+    </FeedbackProvider>
+  );
+}
+
+function Splash() {
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+      <div className="flex flex-col items-center gap-5">
+        <div className="relative w-14 h-14">
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-orange-400 to-brand shadow-xl shadow-brand/30 animate-pulse" />
+          <div className="absolute inset-0 flex items-center justify-center text-white text-2xl font-bold">L</div>
+        </div>
+        <div className="w-32 h-1 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
+          <div className="h-full w-1/3 rounded-full bg-brand animate-[loading_1.1s_ease-in-out_infinite]" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Root() {
   const [user, setUser] = useState<User | null>(null);
   const [authChecking, setAuthChecking] = useState(true);
-  
-  const { records, config, setConfig, addRecord, deleteRecord, updateRecord, isLoaded } = useData(user);
+  const data = useData(user);
 
+  useEffect(() => onAuthStateChanged(auth, (u: User | null) => {
+    setUser(u);
+    setAuthChecking(false);
+  }), []);
+
+  // Tema
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setAuthChecking(false);
-    });
-    return () => unsubscribe();
-  }, []);
+    const dark = data.config.theme === 'dark';
+    document.documentElement.classList.toggle('dark', dark);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#09090b' : '#fafafa');
+  }, [data.config.theme]);
 
-  useEffect(() => {
-    if (config.theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [config.theme]);
-
-  if (!isLoaded || authChecking) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 transition-colors">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-brand border-t-transparent rounded-full animate-spin" />
-          <p className="text-zinc-500 dark:text-zinc-400 font-bold text-sm animate-pulse">Iniciando Lori-TI...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Auth />;
-  }
-
-  const closeForm = () => {
-    setIsModalOpen(false);
-    setFormType(null);
-    setPrefill(undefined);
-  };
-
-  const openNewForm = () => {
-    setFormType(null);
-    setPrefill(undefined);
-    setFormKey(k => k + 1);
-    setIsModalOpen(true);
-  };
-
-  const handleAddRecord = (record: AppRecord) => {
-    addRecord(record);
-    if (record.type === 'invoice' || record.type === 'quote') {
-      setCurrentView(record.type === 'invoice' ? 'invoices' : 'quotes');
-    }
-    closeForm();
-  };
-
-  const handleImportConfirm = (type: 'quote' | 'invoice', data: RecordPrefill) => {
-    setIsImportOpen(false);
-    setFormType(type);
-    setPrefill(data);
-    setFormKey(k => k + 1);
-    setIsModalOpen(true);
-  };
-
-  const defaultFormType: RecordType =
-    currentView === 'dashboard' || currentView === 'reports' ? 'invoice' : currentView.slice(0, -1) as RecordType;
-
-  const handleThemeToggle = () => {
-    setConfig(prev => ({
-      ...prev,
-      theme: prev.theme === 'light' ? 'dark' : 'light'
-    }));
-  };
+  if (authChecking || (user && !data.isLoaded)) return <Splash />;
+  if (!user) return <Auth />;
 
   return (
-    <div className="flex h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 transition-colors duration-300">
-      <Sidebar 
-        currentView={currentView} 
-        onViewChange={setCurrentView} 
-        isOpen={isSidebarOpen} 
-        onClose={() => setIsSidebarOpen(false)}
-      />
+    <ActionsProvider data={data}>
+      <Main user={user} data={data} />
+    </ActionsProvider>
+  );
+}
 
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <Navbar 
-          onMenuToggle={() => setIsSidebarOpen(true)} 
-          companyName={config.companyName}
-          theme={config.theme}
-          onThemeToggle={handleThemeToggle}
-          onViewChange={setCurrentView}
-        />
+function Main({ user, data }: { user: User; data: DataApi }) {
+  const actions = useActions();
+  const route = useRoute();
+  const { records, config, isAdmin } = data;
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
-          <div className="max-w-7xl mx-auto">
-            {currentView === 'dashboard' && <DashboardView records={records} />}
-            {['invoices', 'quotes', 'clients', 'expenses'].includes(currentView) && (
-              <RecordsView 
-                type={currentView.slice(0, -1) as any} 
-                records={records} 
-                onAdd={openNewForm}
-                onImportAI={() => setIsImportOpen(true)}
-                onDelete={deleteRecord}
-                onUpdate={updateRecord}
-                onAddDirectly={addRecord}
-                config={config}
-              />
-            )}
-            {currentView === 'reports' && <ReportsView records={records} config={config} />}
-            {currentView === 'notes' && (
-              <NotesView 
-                records={records.filter(r => r.type === 'note') as any} 
-                onAdd={(note) => addRecord(note as any)}
-                onDelete={deleteRecord}
-              />
-            )}
-            {currentView === 'admin' && <AdminView />}
-          </div>
-        </main>
-      </div>
+  const counts = useMemo(() => ({
+    overdue: records.filter(r => r.type === 'invoice' && invoiceStatus(r) === 'overdue').length,
+    pendingQuotes: records.filter(r => r.type === 'quote' && r.status === 'pending').length,
+  }), [records]);
 
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={closeForm}
-        title={prefill ? (formType === 'invoice' ? 'Nova Fatura (IA)' : 'Novo Orçamento (IA)') : 'Novo Registro'}
-      >
-        <div key={formKey}>
-        <RecordForm 
-          type={formType || defaultFormType}
-          clients={records.filter(r => r.type === 'client') as Client[]} 
-          initialData={prefill}
-          onCreateClient={(client) => addRecord(client)}
-          onCancel={closeForm}
-          onSubmit={handleAddRecord}
-        />
-        </div>
-      </Modal>
+  useEffect(() => {
+    if (route.view === 'admin' && !isAdmin) navigate('dashboard');
+  }, [route.view, isAdmin]);
 
-      <Modal
-        isOpen={isImportOpen}
-        onClose={() => setIsImportOpen(false)}
-        title="Importar proposta com IA"
-      >
-        <ProposalImport
-          onCancel={() => setIsImportOpen(false)}
-          onConfirm={handleImportConfirm}
-        />
-      </Modal>
-    </div>
+  // Título da aba com o número de vencidas
+  useEffect(() => {
+    document.title = counts.overdue > 0 ? `(${counts.overdue}) Lori Faturamento` : 'Lori Faturamento';
+  }, [counts.overdue]);
+
+  const onQuickAction = (a: QuickAction) => {
+    switch (a) {
+      case 'import': return actions.importProposal();
+      case 'receipt': return actions.scanReceipt();
+      default: return actions.create(a);
+    }
+  };
+
+  const toggleTheme = () => data.setConfig(prev => ({ ...prev, theme: prev.theme === 'light' ? 'dark' : 'light' }));
+
+  let view: React.ReactNode;
+  switch (route.view) {
+    case 'invoices': view = <DocumentsView kind="invoice" records={records} config={config} preset={route.param} />; break;
+    case 'quotes': view = <DocumentsView kind="quote" records={records} config={config} preset={route.param} />; break;
+    case 'clients': view = <ClientsView records={records} />; break;
+    case 'client': view = <ClientDetailView clientId={route.param} records={records} config={config} />; break;
+    case 'expenses': view = <ExpensesView records={records} />; break;
+    case 'recurring': view = <RecurringView records={records} />; break;
+    case 'reports': view = <ReportsView records={records} config={config} />; break;
+    case 'assistant': view = <AssistantView records={records} config={config} initialQuestion={route.param} />; break;
+    case 'notes': view = <NotesView records={records} />; break;
+    case 'settings': view = <SettingsView config={config} records={records} onSave={c => data.setConfig(c)} />; break;
+    case 'admin': view = isAdmin ? <AdminView /> : null; break;
+    default: view = <DashboardView records={records} config={config} userName={user.displayName || user.email || ''} />;
+  }
+
+  return (
+    <AppShell
+      view={route.view}
+      config={config}
+      user={user}
+      isAdmin={isAdmin}
+      counts={counts}
+      onQuickAction={onQuickAction}
+      onToggleTheme={toggleTheme}
+    >
+      {view}
+    </AppShell>
   );
 }

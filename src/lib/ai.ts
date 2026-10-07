@@ -9,7 +9,7 @@
 
 import { getAI, getGenerativeModel, GoogleAIBackend, Schema } from 'firebase/ai';
 import app from './firebase';
-import { LineItem } from '../types';
+import { EXPENSE_CATEGORIES, LineItem } from '../types';
 
 /** Modelo usado. Pode ser trocado via variável VITE_GEMINI_MODEL no .env. */
 const MODEL_NAME: string =
@@ -86,20 +86,25 @@ Regras:
 - Campos não encontrados: deixe texto vazio ou 0.
 - Escreva tudo em português do Brasil.`;
 
-let cachedModel: ReturnType<typeof getGenerativeModel> | null = null;
-function getModel() {
-  if (!cachedModel) {
-    const ai = getAI(app, { backend: new GoogleAIBackend() });
-    cachedModel = getGenerativeModel(ai, {
+let aiInstance: ReturnType<typeof getAI> | null = null;
+function getAiInstance() {
+  if (!aiInstance) aiInstance = getAI(app, { backend: new GoogleAIBackend() });
+  return aiInstance;
+}
+
+const modelCache = new Map<string, ReturnType<typeof getGenerativeModel>>();
+function jsonModel(key: string, schema: unknown) {
+  if (!modelCache.has(key)) {
+    modelCache.set(key, getGenerativeModel(getAiInstance(), {
       model: MODEL_NAME,
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: proposalSchema,
-        temperature: 0.1,
-      },
-    });
+      generationConfig: { responseMimeType: 'application/json', responseSchema: schema, temperature: 0.1 },
+    }));
   }
-  return cachedModel;
+  return modelCache.get(key)!;
+}
+
+function getModel() {
+  return jsonModel('proposal', proposalSchema);
 }
 
 function blobToBase64(blob: Blob): Promise<string> {
@@ -224,4 +229,101 @@ export function pickRecordingMimeType(): string {
   const candidates = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4', 'audio/webm'];
   if (typeof MediaRecorder === 'undefined') return '';
   return candidates.find(t => MediaRecorder.isTypeSupported(t)) || '';
+}
+
+// ---------------------------------------------------------------------------
+// Despesas: ler cupom / nota fiscal / recibo
+// ---------------------------------------------------------------------------
+
+export interface ExtractedExpense {
+  description: string;
+  total: number;
+  category: string;
+  date: string;
+}
+
+const expenseSchema = Schema.object({
+  properties: {
+    description: Schema.string({ description: 'Descrição curta da despesa: estabelecimento + o que foi comprado (ex.: "Kalunga - cabos de rede").' }),
+    total: Schema.number({ description: 'Valor TOTAL pago em reais, número puro (ex.: 89.9).' }),
+    category: Schema.enumString({ enum: [...EXPENSE_CATEGORIES], description: 'Categoria que melhor descreve a despesa.' }),
+    date: Schema.string({ description: 'Data da compra no formato AAAA-MM-DD. Vazio se não houver.' }),
+  },
+  optionalProperties: ['date'],
+});
+
+const EXPENSE_PROMPT = `Você lê cupons fiscais, notas fiscais, recibos e comprovantes brasileiros.
+Extraia a despesa: descrição curta (estabelecimento + item principal), valor TOTAL pago (não o subtotal), categoria e data.
+Valores: "R$ 1.234,56" vira 1234.56. Nunca invente dados. Escreva em português do Brasil.`;
+
+export async function extractExpense(input: ProposalInput): Promise<ExtractedExpense> {
+  const parts: any[] = [EXPENSE_PROMPT];
+  if (input.kind === 'text') {
+    if (!input.text.trim()) throw new Error('Cole o texto do comprovante.');
+    parts.push('Comprovante:\n"""\n' + input.text.slice(0, 50_000) + '\n"""');
+  } else {
+    if (input.file.size > MAX_FILE_BYTES) throw new Error('Arquivo muito grande (máx. 15 MB).');
+    parts.push({ inlineData: { mimeType: input.mimeType.split(';')[0], data: await blobToBase64(input.file) } });
+  }
+  let text: string;
+  try {
+    const result = await jsonModel('expense', expenseSchema).generateContent(parts);
+    text = result.response.text();
+  } catch (err) {
+    console.error('AI error:', err);
+    throw friendlyError(err);
+  }
+  try {
+    const raw = JSON.parse(text);
+    const category = (EXPENSE_CATEGORIES as readonly string[]).includes(raw?.category) ? raw.category : 'Outros';
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(str(raw?.date)) ? str(raw.date) : '';
+    const out = { description: str(raw?.description).slice(0, 200), total: num(raw?.total), category, date };
+    if (!out.description && !out.total) throw new Error('empty');
+    return out;
+  } catch {
+    throw new Error('A IA não encontrou uma despesa nesse arquivo. Tente uma foto mais nítida.');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Assistente: perguntas sobre os números do negócio
+// ---------------------------------------------------------------------------
+
+export interface ChatMessage { role: 'user' | 'model'; text: string }
+
+let assistantModel: ReturnType<typeof getGenerativeModel> | null = null;
+function getAssistantModel() {
+  if (!assistantModel) {
+    assistantModel = getGenerativeModel(getAiInstance(), {
+      model: MODEL_NAME,
+      generationConfig: { temperature: 0.3 },
+      systemInstruction: `Você é o assistente financeiro do sistema Lori Faturamento, usado por uma empresa brasileira de serviços de TI.
+Responda SEMPRE em português do Brasil, de forma curta, direta e amigável.
+Use somente os dados fornecidos no contexto (JSON). Se a informação não estiver nos dados, diga isso claramente.
+Valores em reais no formato R$ 1.234,56. Datas no formato DD/MM/AAAA.
+Quando listar itens, use listas curtas com "- ". Use **negrito** só para destacar números importantes.
+Você pode sugerir ações práticas (cobrar um cliente, revisar despesas), mas nunca invente números.`,
+    });
+  }
+  return assistantModel;
+}
+
+export async function askAssistant(question: string, context: unknown, history: ChatMessage[] = []): Promise<string> {
+  const q = question.trim();
+  if (!q) throw new Error('Digite uma pergunta.');
+  const contents = [
+    { role: 'user', parts: [{ text: 'Dados atuais do negócio (JSON):\n' + JSON.stringify(context) }] },
+    { role: 'model', parts: [{ text: 'Entendido. Vou responder com base nesses dados.' }] },
+    ...history.slice(-10).map(m => ({ role: m.role, parts: [{ text: m.text }] })),
+    { role: 'user', parts: [{ text: q }] },
+  ];
+  try {
+    const result = await getAssistantModel().generateContent({ contents });
+    const text = result.response.text().trim();
+    if (!text) throw new Error('Resposta vazia');
+    return text;
+  } catch (err) {
+    console.error('AI error:', err);
+    throw friendlyError(err);
+  }
 }
