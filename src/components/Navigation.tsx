@@ -18,6 +18,7 @@ import { cn } from '../lib/utils';
 import { navigate, routeHref, ViewType } from '../lib/router';
 import { AppConfig } from '../types';
 import { Avatar, DropdownMenu } from './ui';
+import { LogoMark } from './LogoMark';
 
 export type QuickAction = 'invoice' | 'quote' | 'import' | 'expense' | 'receipt' | 'client' | 'service' | 'recurring';
 
@@ -71,9 +72,7 @@ function Brand({ config, compact }: { config: AppConfig; compact?: boolean }) {
       {config.logo ? (
         <img src={config.logo} alt="" className="w-9 h-9 rounded-xl object-contain bg-white ring-1 ring-zinc-200 dark:ring-zinc-700 shrink-0" />
       ) : (
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-orange-400 to-brand flex items-center justify-center text-white font-bold shadow-sm shadow-brand/30 shrink-0">
-          {(config.companyName || 'L').charAt(0).toUpperCase()}
-        </div>
+        <LogoMark className="w-9 h-9 shrink-0 drop-shadow-sm" />
       )}
       {!compact && (
         <div className="min-w-0">

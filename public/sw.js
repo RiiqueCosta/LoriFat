@@ -3,7 +3,7 @@
  * - Arquivos /assets/* (nomes com hash): cache primeiro.
  * - Firebase, fontes e outras origens: não são interceptados.
  */
-const CACHE = 'lorifat-v2';
+const CACHE = 'lorifat-v3';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

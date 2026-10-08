@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { LogoMark } from './LogoMark';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -112,9 +113,7 @@ export function Auth() {
       <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-xl overflow-hidden transition-all duration-300">
         <div className="p-8">
           <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 bg-brand rounded-2xl flex items-center justify-center text-white font-bold text-3xl shadow-xl shadow-brand/20 mb-4 animate-in fade-in zoom-in duration-500">
-              L
-            </div>
+            <LogoMark className="w-16 h-16 mb-4 drop-shadow-xl animate-in fade-in zoom-in duration-500" />
             <h1 className="text-2xl font-black text-zinc-900 dark:text-zinc-100">Lori Faturamento</h1>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
               {isLogin ? 'Bem-vindo de volta!' : 'Cadastro exclusivo para colaboradores'}

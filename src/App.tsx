@@ -12,6 +12,7 @@ import { invoiceStatus } from './lib/billing';
 import { useData, DataApi } from './useData';
 import { ActionsProvider, useActions } from './actions';
 import { Auth } from './components/Auth';
+import { LogoMark } from './components/LogoMark';
 import { AppShell, QuickAction } from './components/Navigation';
 import { DashboardView } from './views/DashboardView';
 import { DocumentsView } from './views/DocumentsView';
@@ -38,10 +39,7 @@ function Splash() {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
       <div className="flex flex-col items-center gap-5">
-        <div className="relative w-14 h-14">
-          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-orange-400 to-brand shadow-xl shadow-brand/30 animate-pulse" />
-          <div className="absolute inset-0 flex items-center justify-center text-white text-2xl font-bold">L</div>
-        </div>
+        <LogoMark className="w-14 h-14 animate-pulse drop-shadow-xl" />
         <div className="w-32 h-1 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden">
           <div className="h-full w-1/3 rounded-full bg-brand animate-[loading_1.1s_ease-in-out_infinite]" />
         </div>
