@@ -108,6 +108,16 @@ service cloud.firestore {
         allow delete: if isAuthorizedMember(userId) && isValidId(recordId);
       }
 
+      // Aparelhos que recebem notificações (token do Firebase Cloud Messaging).
+      match /devices/{deviceId} {
+        allow read, delete: if isAuthorizedMember(userId) && isValidId(deviceId);
+        allow create, update: if isAuthorizedMember(userId) && isValidId(deviceId) &&
+          incoming().keys().hasAll(['token', 'prefs', 'uid']) &&
+          incoming().token is string && incoming().token.size() <= 4096 &&
+          incoming().prefs is map &&
+          incoming().uid == request.auth.uid;
+      }
+
       match /settings/config {
         allow get: if isAuthorizedMember(userId);
         allow write: if isAuthorizedMember(userId) && isValidConfig(incoming());

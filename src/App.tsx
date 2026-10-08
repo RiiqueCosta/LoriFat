@@ -118,7 +118,7 @@ function Main({ user, data }: { user: User; data: DataApi }) {
     case 'reports': view = <ReportsView records={records} config={config} />; break;
     case 'assistant': view = <AssistantView records={records} config={config} initialQuestion={route.param} />; break;
     case 'notes': view = <NotesView records={records} />; break;
-    case 'settings': view = <SettingsView config={config} records={records} onSave={c => data.setConfig(c)} />; break;
+    case 'settings': view = <SettingsView config={config} records={records} ownerId={data.dataOwnerId} onSave={c => data.setConfig(c)} />; break;
     case 'admin': view = isAdmin ? <AdminView /> : null; break;
     default: view = <DashboardView records={records} config={config} userName={user.displayName || user.email || ''} />;
   }

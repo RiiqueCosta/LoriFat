@@ -13,6 +13,7 @@ import { copyText, cn, stripAccents } from '../lib/utils';
 import { exportBackup } from '../lib/export';
 import { useFeedback } from '../lib/feedback';
 import { Button, Card, CardHeader, Field, Input, PageHeader, Select, Textarea } from '../components/ui';
+import { NotificationsCard } from '../components/NotificationsCard';
 
 /** Reduz a imagem para no máx. 256px e devolve PNG em data URL. */
 function resizeImage(file: File, max = 256): Promise<string> {
@@ -37,7 +38,7 @@ function resizeImage(file: File, max = 256): Promise<string> {
 
 interface BeforeInstallPromptEvent extends Event { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }
 
-export function SettingsView({ config, records, onSave }: { config: AppConfig; records: AppRecord[]; onSave: (c: AppConfig) => Promise<boolean> }) {
+export function SettingsView({ config, records, ownerId, onSave }: { config: AppConfig; records: AppRecord[]; ownerId: string | null; onSave: (c: AppConfig) => Promise<boolean> }) {
   const feedback = useFeedback();
   const [draft, setDraft] = useState<AppConfig>(config);
   const [saving, setSaving] = useState(false);
@@ -162,6 +163,8 @@ export function SettingsView({ config, records, onSave }: { config: AppConfig; r
           </div>
         </div>
       </Card>
+
+      <NotificationsCard ownerId={ownerId} />
 
       <Card>
         <CardHeader title="Documentos" description="Prazos e textos padrão." icon={FileText} />
