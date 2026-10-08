@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react';
 import {
   LayoutDashboard, FileText, FileCheck2, Users, Wallet, BarChart3, Sun, Moon, StickyNote, LogOut,
   ShieldCheck, Plus, Repeat, Sparkles, Settings, UserPlus, MessageCircle, Grid2x2, X, ChevronDown,
-  ScanLine,
+  ScanLine, Wrench,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { User } from 'firebase/auth';
@@ -19,7 +19,7 @@ import { navigate, routeHref, ViewType } from '../lib/router';
 import { AppConfig } from '../types';
 import { Avatar, DropdownMenu } from './ui';
 
-export type QuickAction = 'invoice' | 'quote' | 'import' | 'expense' | 'receipt' | 'client' | 'recurring';
+export type QuickAction = 'invoice' | 'quote' | 'import' | 'expense' | 'receipt' | 'client' | 'service' | 'recurring';
 
 export interface NavCounts {
   overdue: number;
@@ -34,6 +34,7 @@ function useNavGroups(counts: NavCounts, isAdmin: boolean) {
     { id: 'invoices', label: 'Faturas', icon: FileText, badge: counts.overdue, badgeTone: 'danger' },
     { id: 'quotes', label: 'Orçamentos', icon: FileCheck2, badge: counts.pendingQuotes, badgeTone: 'info' },
     { id: 'clients', label: 'Clientes', icon: Users },
+    { id: 'services', label: 'Serviços', icon: Wrench },
     { id: 'expenses', label: 'Despesas', icon: Wallet },
     { id: 'recurring', label: 'Recorrentes', icon: Repeat },
   ];
@@ -60,6 +61,7 @@ export const QUICK_ACTIONS: { id: QuickAction; label: string; description: strin
   { id: 'expense', label: 'Nova despesa', description: 'Lançar um gasto', icon: Wallet, tone: 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400' },
   { id: 'receipt', label: 'Ler cupom com IA', description: 'Foto do comprovante', icon: ScanLine, tone: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' },
   { id: 'client', label: 'Novo cliente', description: 'Cadastrar contato', icon: UserPlus, tone: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' },
+  { id: 'service', label: 'Novo serviço', description: 'Cadastrar no catálogo', icon: Wrench, tone: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400' },
   { id: 'recurring', label: 'Nova cobrança recorrente', description: 'Contrato mensal', icon: Repeat, tone: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300' },
 ];
 
@@ -185,7 +187,7 @@ function UserMenu({ user, align = 'right', full }: { user: User; align?: 'left' 
 }
 
 const VIEW_TITLES: Partial<Record<ViewType, string>> = {
-  dashboard: 'Início', invoices: 'Faturas', quotes: 'Orçamentos', clients: 'Clientes', client: 'Cliente',
+  dashboard: 'Início', invoices: 'Faturas', quotes: 'Orçamentos', clients: 'Clientes', client: 'Cliente', services: 'Serviços',
   expenses: 'Despesas', recurring: 'Recorrentes', reports: 'Relatórios', assistant: 'Assistente IA',
   notes: 'Notas', settings: 'Configurações', admin: 'Administração',
 };
@@ -236,7 +238,7 @@ export function MobileNav({ view, counts, isAdmin, onQuickAction }: ShellProps) 
     </a>
   );
 
-  const moreIds: ViewType[] = ['quotes', 'expenses', 'recurring', 'reports', 'assistant', 'notes', 'settings', 'admin'];
+  const moreIds: ViewType[] = ['quotes', 'services', 'expenses', 'recurring', 'reports', 'assistant', 'notes', 'settings', 'admin'];
   const moreItems = groups.flatMap(g => g.items).filter(i => moreIds.includes(i.id));
 
   return (

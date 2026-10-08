@@ -6,7 +6,7 @@
  */
 
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import { AppRecord, Client, Expense, Invoice, Note, Quote, Recurring } from './types';
+import { AppRecord, Client, Expense, Invoice, Note, Quote, Recurring, Service } from './types';
 import type { DataApi } from './useData';
 import { useFeedback } from './lib/feedback';
 import {
@@ -24,8 +24,10 @@ import { DocumentDetail } from './components/DocumentDetail';
 import { SendDialog } from './components/ChargeDialog';
 import { ProposalImport } from './components/ai/ProposalImport';
 import { ReceiptImport } from './components/ai/ReceiptImport';
+import { ServiceForm } from './components/forms/ServiceForm';
+import { activeServices, linkItemsToServices, ServicesContext } from './lib/services';
 
-type CreateType = 'invoice' | 'quote' | 'client' | 'expense' | 'recurring';
+type CreateType = 'invoice' | 'quote' | 'client' | 'expense' | 'recurring' | 'service';
 
 export interface DocActions {
   create: (type: CreateType, opts?: { clientId?: string; prefill?: RecordPrefill; expensePrefill?: ExpensePrefill }) => void;
@@ -44,6 +46,7 @@ export interface DocActions {
   scanReceipt: () => void;
   generateRecurringNow: (rec: Recurring) => Promise<void>;
   toggleRecurring: (rec: Recurring) => Promise<void>;
+  toggleService: (s: Service) => Promise<void>;
   saveNote: (note: Note) => Promise<boolean>;
 }
 
@@ -52,6 +55,7 @@ type ModalState =
   | { kind: 'client-form'; initial?: Client }
   | { kind: 'expense-form'; initial?: Expense; prefill?: ExpensePrefill }
   | { kind: 'recurring-form'; initial?: Recurring; clientId?: string }
+  | { kind: 'service-form'; initial?: Service }
   | { kind: 'detail'; id: string }
   | { kind: 'send'; id: string; mode: 'send' | 'charge' }
   | { kind: 'import' }
@@ -66,7 +70,7 @@ export function useActions(): DocActions {
 }
 
 const TYPE_LABEL: Record<AppRecord['type'], string> = {
-  invoice: 'Fatura', quote: 'Orçamento', client: 'Cliente', expense: 'Despesa', note: 'Nota', recurring: 'Cobrança recorrente',
+  invoice: 'Fatura', quote: 'Orçamento', client: 'Cliente', expense: 'Despesa', note: 'Nota', recurring: 'Cobrança recorrente', service: 'Serviço',
 };
 
 export function ActionsProvider({ data, children }: { data: DataApi; children: React.ReactNode }) {
@@ -77,6 +81,7 @@ export function ActionsProvider({ data, children }: { data: DataApi; children: R
 
   const clients = useMemo(() => records.filter((r): r is Client => r.type === 'client'), [records]);
   const clientById = useMemo(() => new Map(clients.map(c => [c.id, c])), [clients]);
+  const services = useMemo(() => activeServices(records), [records]);
   const findRecord = (id: string) => records.find(r => r.id === id);
 
   /** Salva (cria ou atualiza) e devolve o registro salvo. */
@@ -91,6 +96,7 @@ export function ActionsProvider({ data, children }: { data: DataApi; children: R
         setModal({ kind: 'doc-form', type, prefill: opts.prefill ?? (opts.clientId ? { clientId: opts.clientId } : undefined) });
       } else if (type === 'client') setModal({ kind: 'client-form' });
       else if (type === 'expense') setModal({ kind: 'expense-form', prefill: opts.expensePrefill });
+      else if (type === 'service') setModal({ kind: 'service-form' });
       else setModal({ kind: 'recurring-form', clientId: opts.clientId });
     },
 
@@ -101,6 +107,7 @@ export function ActionsProvider({ data, children }: { data: DataApi; children: R
         case 'client': setModal({ kind: 'client-form', initial: rec }); break;
         case 'expense': setModal({ kind: 'expense-form', initial: rec }); break;
         case 'recurring': setModal({ kind: 'recurring-form', initial: rec }); break;
+        case 'service': setModal({ kind: 'service-form', initial: rec }); break;
         default: break;
       }
     },
@@ -235,6 +242,13 @@ export function ActionsProvider({ data, children }: { data: DataApi; children: R
       }
     },
 
+    toggleService: async s => {
+      const active = s.active === false;
+      if (await updateRecord(s.id, { active } as Partial<Service>)) {
+        feedback.info(active ? 'Serviço reativado' : 'Serviço desativado', active ? undefined : 'Ele some do catálogo, mas o histórico continua.');
+      }
+    },
+
     saveNote: async note => {
       const exists = records.some(r => r.id === note.id);
       const ok = exists ? await updateRecord(note.id, note) : !!(await addRecord(note));
@@ -294,6 +308,12 @@ export function ActionsProvider({ data, children }: { data: DataApi; children: R
     feedback.success(initial ? 'Contrato atualizado' : 'Cobrança recorrente criada', `${r.clientName} · ${formatCurrency(r.total)}/mês`);
   };
 
+  const submitService = async (s: Service, initial?: Service) => {
+    if (!(await persist(s, !initial))) return;
+    close();
+    feedback.success(initial ? 'Serviço atualizado' : 'Serviço cadastrado', `${s.name} · ${formatCurrency(s.price)}`);
+  };
+
   // --- Renderização do modal atual ----------------------------------------------------
 
   let content: React.ReactNode = null;
@@ -341,6 +361,14 @@ export function ActionsProvider({ data, children }: { data: DataApi; children: R
             onCancel={close} onSubmit={(r, nc) => submitRecurring(r, nc, modal.initial)} />
         );
         break;
+      case 'service-form':
+        title = modal.initial ? 'Editar serviço' : 'Novo serviço';
+        description = modal.initial ? undefined : 'Fica no catálogo para usar em faturas e orçamentos.';
+        content = (
+          <ServiceForm initial={modal.initial} onCancel={close} onSubmit={sv => submitService(sv, modal.initial)}
+            categories={[...new Set(services.map(x => x.category?.trim()).filter((c): c is string => !!c))]} />
+        );
+        break;
       case 'detail': {
         const rec = findRecord(modal.id) as Invoice | Quote | undefined;
         if (rec) {
@@ -363,7 +391,14 @@ export function ActionsProvider({ data, children }: { data: DataApi; children: R
         content = (
           <ProposalImport
             onCancel={close}
-            onConfirm={(type, prefill) => setModal({ kind: 'doc-form', type, prefill })}
+            onConfirm={(type, prefill) => {
+              if (prefill.items?.length && services.length) {
+                const { items, linked } = linkItemsToServices(prefill.items, services);
+                prefill = { ...prefill, items };
+                if (linked) feedback.info(`${linked} ${linked === 1 ? 'item ligado' : 'itens ligados'} ao seu catálogo de serviços`);
+              }
+              setModal({ kind: 'doc-form', type, prefill });
+            }}
           />
         );
         break;
@@ -376,10 +411,12 @@ export function ActionsProvider({ data, children }: { data: DataApi; children: R
 
   return (
     <ActionsContext.Provider value={actions}>
-      {children}
-      <Modal isOpen={!!modal && !!content} onClose={close} title={title} description={description} size={size}>
-        {content}
-      </Modal>
+      <ServicesContext.Provider value={services}>
+        {children}
+        <Modal isOpen={!!modal && !!content} onClose={close} title={title} description={description} size={size}>
+          {content}
+        </Modal>
+      </ServicesContext.Provider>
     </ActionsContext.Provider>
   );
 }

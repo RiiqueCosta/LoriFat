@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export type RecordType = 'invoice' | 'quote' | 'client' | 'expense' | 'note' | 'recurring';
+export type RecordType = 'invoice' | 'quote' | 'client' | 'expense' | 'note' | 'recurring' | 'service';
 
 export interface BaseRecord {
   id: string;
@@ -34,7 +34,31 @@ export interface LineItem {
   description: string;
   quantity: number;
   unitPrice: number;
+  /** Serviço do catálogo que originou o item (opcional). */
+  serviceId?: string;
 }
+
+/** Serviço do catálogo, usado para preencher itens de faturas e orçamentos. */
+export interface Service extends BaseRecord {
+  type: 'service';
+  name: string;
+  description?: string;
+  price: number;
+  unit: ServiceUnit;
+  category?: string;
+  active: boolean;
+}
+
+export type ServiceUnit = 'servico' | 'hora' | 'mes' | 'unidade' | 'projeto' | 'visita';
+
+export const SERVICE_UNITS: { value: ServiceUnit; label: string; short: string }[] = [
+  { value: 'servico', label: 'Por serviço', short: 'serviço' },
+  { value: 'hora', label: 'Por hora', short: 'hora' },
+  { value: 'visita', label: 'Por visita', short: 'visita' },
+  { value: 'unidade', label: 'Por unidade', short: 'un.' },
+  { value: 'mes', label: 'Mensal', short: 'mês' },
+  { value: 'projeto', label: 'Por projeto', short: 'projeto' },
+];
 
 interface BillingFields {
   /** Número sequencial, ex.: FAT-2026-0001 */
@@ -100,7 +124,7 @@ export interface Recurring extends BaseRecord {
   lastGenerated?: string;
 }
 
-export type AppRecord = Client | Invoice | Quote | Expense | Note | Recurring;
+export type AppRecord = Client | Invoice | Quote | Expense | Note | Recurring | Service;
 
 export type PixKeyType = 'cpf' | 'cnpj' | 'email' | 'phone' | 'random';
 

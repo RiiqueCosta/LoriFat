@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react';
 
 export type ViewType =
-  | 'dashboard' | 'invoices' | 'quotes' | 'clients' | 'client' | 'expenses'
+  | 'dashboard' | 'invoices' | 'quotes' | 'clients' | 'client' | 'services' | 'expenses'
   | 'recurring' | 'reports' | 'assistant' | 'notes' | 'settings' | 'admin';
 
 const SLUGS: Record<ViewType, string> = {
@@ -18,6 +18,7 @@ const SLUGS: Record<ViewType, string> = {
   quotes: 'orcamentos',
   clients: 'clientes',
   client: 'cliente',
+  services: 'servicos',
   expenses: 'despesas',
   recurring: 'recorrentes',
   reports: 'relatorios',

@@ -17,6 +17,7 @@ import { DashboardView } from './views/DashboardView';
 import { DocumentsView } from './views/DocumentsView';
 import { ClientsView } from './views/ClientsView';
 import { ClientDetailView } from './views/ClientDetailView';
+import { ServicesView } from './views/ServicesView';
 import { ExpensesView } from './views/ExpensesView';
 import { RecurringView } from './views/RecurringView';
 import { ReportsView } from './views/ReportsView';
@@ -111,6 +112,7 @@ function Main({ user, data }: { user: User; data: DataApi }) {
     case 'quotes': view = <DocumentsView kind="quote" records={records} config={config} preset={route.param} />; break;
     case 'clients': view = <ClientsView records={records} />; break;
     case 'client': view = <ClientDetailView clientId={route.param} records={records} config={config} />; break;
+    case 'services': view = <ServicesView records={records} />; break;
     case 'expenses': view = <ExpensesView records={records} />; break;
     case 'recurring': view = <RecurringView records={records} />; break;
     case 'reports': view = <ReportsView records={records} config={config} />; break;

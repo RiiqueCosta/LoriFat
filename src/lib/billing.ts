@@ -37,6 +37,7 @@ export function cleanItems(items: LineItem[]): LineItem[] {
       description: (i.description || '').trim(),
       quantity: Number(i.quantity) || 0,
       unitPrice: Number(i.unitPrice) || 0,
+      ...(i.serviceId ? { serviceId: i.serviceId } : {}),
     }))
     .filter(i => i.description || i.unitPrice);
 }

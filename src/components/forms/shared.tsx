@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useMemo } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
-import { Client, LineItem } from '../../types';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Plus, Search, Trash2, Wrench } from 'lucide-react';
+import { Client, LineItem, Service } from '../../types';
+import { itemFromService, unitShort, useServices } from '../../lib/services';
 import { calcTotals } from '../../lib/billing';
 import { cn, formatCurrency, generateId, normalizeText, todayISO } from '../../lib/utils';
 import { Button, Field, Input, MoneyInput, Select, inputBase } from '../ui';
@@ -32,6 +33,12 @@ export function ItemsEditor({ items, onChange }: { items: LineItem[]; onChange: 
     onChange(items.map((it, i) => (i === index ? { ...it, ...patch } : it)));
   const remove = (index: number) => onChange(items.length > 1 ? items.filter((_, i) => i !== index) : [{ description: '', quantity: 1, unitPrice: 0 }]);
   const add = () => onChange([...items, { description: '', quantity: 1, unitPrice: 0 }]);
+  const addService = (s: Service) => {
+    const next = itemFromService(s);
+    const last = items[items.length - 1];
+    const lastEmpty = last && !last.description.trim() && !last.unitPrice;
+    onChange(lastEmpty ? [...items.slice(0, -1), next] : [...items, next]);
+  };
 
   return (
     <div className="space-y-2">
@@ -82,7 +89,10 @@ export function ItemsEditor({ items, onChange }: { items: LineItem[]; onChange: 
           </div>
         </div>
       ))}
-      <Button variant="outline" size="sm" icon={Plus} onClick={add} className="mt-1">Adicionar item</Button>
+      <div className="flex flex-wrap gap-2 mt-1">
+        <ServicePicker onPick={addService} />
+        <Button variant="outline" size="sm" icon={Plus} onClick={add}>Adicionar item</Button>
+      </div>
     </div>
   );
 }
@@ -162,6 +172,71 @@ export function ClientPicker({ clients, value, onChange, newClient, onNewClientC
             <Input placeholder="Empresa" value={newClient.company} onChange={e => onNewClientChange({ ...newClient, company: e.target.value })} />
             <Input type="email" placeholder="E-mail" value={newClient.email} onChange={e => onNewClientChange({ ...newClient, email: e.target.value })} />
             <Input type="tel" placeholder="WhatsApp / telefone" value={newClient.phone} onChange={e => onNewClientChange({ ...newClient, phone: e.target.value })} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Escolher serviço do catálogo ---------------------------------------------------
+
+function ServicePicker({ onPick }: { onPick: (s: Service) => void }) {
+  const services = useServices().filter(s => s.active !== false);
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | TouchEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('touchstart', close);
+    document.addEventListener('keydown', onKey, true);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('touchstart', close);
+      document.removeEventListener('keydown', onKey, true);
+    };
+  }, [open]);
+
+  if (!services.length) return null;
+  const query = normalizeText(q);
+  const list = services.filter(s => !query || normalizeText(`${s.name} ${s.category || ''} ${s.description || ''}`).includes(query));
+
+  const pick = (s: Service) => { onPick(s); setOpen(false); setQ(''); };
+
+  return (
+    <div className="relative" ref={ref}>
+      <Button variant="primary" size="sm" icon={Wrench} onClick={() => setOpen(o => !o)}>Do catálogo</Button>
+      {open && (
+        <div className="absolute z-50 bottom-full mb-2 left-0 w-[min(22rem,calc(100vw-3rem))] rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-xl shadow-zinc-900/10 overflow-hidden">
+          <div className="p-2 border-b border-zinc-100 dark:border-zinc-800 flex items-center gap-2">
+            <Search className="w-4 h-4 text-zinc-400 ml-1 shrink-0" />
+            <input
+              autoFocus
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (list[0]) pick(list[0]); } }}
+              placeholder="Buscar serviço"
+              className="flex-1 h-8 bg-transparent text-sm outline-none text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400"
+            />
+          </div>
+          <div className="max-h-64 overflow-y-auto py-1">
+            {list.length === 0 && <p className="px-3 py-4 text-center text-xs text-zinc-500">Nenhum serviço encontrado</p>}
+            {list.map(s => (
+              <button key={s.id} type="button" onClick={() => pick(s)}
+                className="w-full px-3 py-2 flex items-center gap-3 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium text-zinc-800 dark:text-zinc-100 truncate">{s.name}</span>
+                  {s.category && <span className="block text-[11px] text-zinc-500 dark:text-zinc-400 truncate">{s.category}</span>}
+                </span>
+                <span className="text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
+                  {formatCurrency(s.price)}<span className="text-[11px] font-normal text-zinc-500"> /{unitShort(s.unit)}</span>
+                </span>
+              </button>
+            ))}
           </div>
         </div>
       )}

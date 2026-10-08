@@ -45,7 +45,7 @@ service cloud.firestore {
       return data.keys().hasAll(['id', 'type', 'dateCreated', 'ownerId']) &&
              data.keys().size() >= 4 &&
              data.id is string && data.id.size() <= 128 &&
-             data.type in ['invoice', 'quote', 'client', 'expense', 'note', 'recurring'] &&
+             data.type in ['invoice', 'quote', 'client', 'expense', 'note', 'recurring', 'service'] &&
              data.dateCreated is string &&
              data.ownerId == userId &&
              (data.keys().hasAny(['items']) ? data.items is list && data.items.size() <= 100 : true) &&
